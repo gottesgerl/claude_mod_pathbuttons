@@ -1,0 +1,5 @@
+{
+  "name": "path-buttons",
+  "owner": { "name": "gottesgerl" },
+  "plugins": [{ "name": "path-buttons", "source": "./" }]
+}
