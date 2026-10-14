@@ -1,5 +1,9 @@
 {
   "name": "path-buttons",
+  "description": "Mods für Claude Code: farbige Pfad-Buttons und ein Handoff-Button für Chatwechsel.",
   "owner": { "name": "gottesgerl" },
-  "plugins": [{ "name": "path-buttons", "source": "./" }]
+  "plugins": [
+    { "name": "path-buttons", "source": "./plugins/path-buttons" },
+    { "name": "handoff-button", "source": "./plugins/handoff-button" }
+  ]
 }
