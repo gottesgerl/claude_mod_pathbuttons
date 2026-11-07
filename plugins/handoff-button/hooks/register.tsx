@@ -137,6 +137,15 @@ async function compact($: Engine) {
   }
 }
 
+// H button: asks for a handover, as if the person had typed it. It runs once the chat is idle.
+async function askHandover($: Engine) {
+  try {
+    await $.prompt.submit({ text: 'Bitte schreib ein Handover.', asUser: true })
+  } catch (error) {
+    $.ui.toast('Handover ging nicht: ' + String(error).slice(0, 200))
+  }
+}
+
 async function log($: Engine, line: string) {
   await resolvePaths($)
   logText += new Date().toISOString() + ' ' + line + '\n'
@@ -403,7 +412,10 @@ export const register: Register = on => {
         <Button key="compact" label="C" dimColor onPress={() => {
           $.clock.after(0, () => void compact($))
         }} />
-        <Button key="handoff" label="H" dimColor onPress={() => {
+        <Button key="ask-handover" label="H" dimColor onPress={() => {
+          $.clock.after(0, () => void askHandover($))
+        }} />
+        <Button key="handoff" label="⤓" dimColor onPress={() => {
           const isWorking = e.props.isWorking
           $.clock.after(0, () => void handoff($, isWorking))
         }} />

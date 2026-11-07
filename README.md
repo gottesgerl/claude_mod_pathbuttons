@@ -5,7 +5,7 @@ Zwei Mods für Claude Code (Desktop-App, Windows), die zusammen eine Leiste übe
 | Mod | Was es tut |
 | --- | --- |
 | `path-buttons` | Runde Farb-Buttons, einer pro Pfad aus den letzten Antworten. Ein Klick öffnet den Pfad. |
-| `handoff-button` | `H`-Button: komprimiert den Chat, benennt ihn in `[A]` um, startet einen neuen Chat `[B]` mit der Übergabe und archiviert den alten. Setzt die Buttons von `path-buttons` links neben das H. |
+| `handoff-button` | `C` für `/compact`, `H` bittet um ein Handover, `⤓` komprimiert den Chat, benennt ihn in `[A]` um, startet einen neuen Chat `[B]` mit der Übergabe und archiviert den alten. Setzt die Buttons von `path-buttons` links neben das H. |
 
 Das `handoff-button` braucht `path-buttons` nicht, und `path-buttons` braucht kein `handoff-button`. Ohne H stehen die Buttons allein in der Leiste. Mit beiden Mods stehen sie links neben dem H, dafür gibt `handoff-button` den Inhalt anderer Mods in der Leiste weiter.
 
@@ -96,12 +96,20 @@ Hinweise:
 
 ## handoff-button
 
-Der `H`-Button in der Leiste über dem Prompt:
+Drei Buttons rechts in der Leiste über dem Prompt:
+
+| Button | Was er tut |
+| --- | --- |
+| `C` | führt sofort `/compact` aus, ohne Nachfrage |
+| `H` | schickt „Bitte schreib ein Handover.“, als hättest du es getippt |
+| `⤓` | das volle Handover, siehe unten |
+
+Der `⤓`-Button:
 1. exportiert den Chat als `.txt` und `.pdf` nach `Dokumente\Claude Handoffs`,
 2. lässt eine Übergabe schreiben,
 3. benennt den Chat `… [A]`, leert ihn und startet ihn als `… [B]` mit der Übergabe,
 4. zeigt im neuen Chat einen `<<`-Button, der das PDF des alten Chats öffnet.
 
-Der `C`-Button links neben dem H führt sofort `/compact` aus, ohne Nachfrage. Läuft gerade eine Antwort oder geht Compact nicht, erscheint eine kurze Meldung.
+Läuft gerade eine Antwort, wartet `H`, bis sie fertig ist. Geht `C` nicht, erscheint eine kurze Meldung.
 
 `/import-chat` lädt einen exportierten Chat in den aktuellen Chat. Das PDF wird mit Microsoft Edge im Hintergrund erzeugt. Ist Edge nicht zu finden, entfällt das PDF.
