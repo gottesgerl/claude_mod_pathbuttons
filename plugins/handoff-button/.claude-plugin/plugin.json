@@ -1,6 +1,6 @@
 {
   "name": "handoff-button",
   "version": "0.3.0",
-  "description": "H-Button: Chat komprimieren, in [A] umbenennen, neuen Chat [B] mit der Übergabe starten, den alten archivieren. Zeigt Buttons anderer Mods (path-buttons) links neben dem H.",
+  "description": "C-Button: sofort /compact. H-Button: Chat komprimieren, in [A] umbenennen, neuen Chat [B] mit der Übergabe starten, den alten archivieren. Zeigt Buttons anderer Mods (path-buttons) links neben dem H.",
   "author": { "name": "gottesgerl" }
 }
