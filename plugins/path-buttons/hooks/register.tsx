@@ -8,6 +8,41 @@ const MAX_BUTTONS = DOTS.length
 // Backticked paths may hold spaces; bare ones end at whitespace or quoting.
 const PATH = /`([A-Za-z]:[\\/][^`\n]+)`|(?<![A-Za-z0-9])([A-Za-z]:[\\/][^\s`"'<>|*?()[\]]+)/g
 
+// Short relative paths (`blender\shot\...`) resolve against the session's project folder (base).
+// A relative path only counts when its first folder is one of the `relativeFolders` option
+// or an alias, so ordinary words with a slash do not turn into buttons. An alias stands for a
+// longer folder (`aliases` option: `name=folder\sub; name2=other`). Both empty: absolute paths only.
+let base = ''
+let ALIASES: Record<string, string> = {}
+// Matches nothing until the options name a folder.
+let REL = /(?!)()()/g
+
+const listOf = (value: unknown) =>
+  String(value ?? '')
+    .split(/[,;]/)
+    .map(part => part.trim())
+    .filter(part => part !== '')
+
+function configure(options: Readonly<Record<string, unknown>>) {
+  ALIASES = {}
+  for (const pair of listOf(options.aliases)) {
+    const [name = '', target = ''] = pair.split('=').map(part => part.trim())
+    if (name !== '' && target !== '') {
+      ALIASES[name] = target.replace(/\//g, '\\').replace(/^\\+|\\+$/g, '')
+    }
+  }
+  const roots = [...listOf(options.relativeFolders), ...Object.keys(ALIASES)]
+  if (roots.length === 0) {
+    REL = /(?!)()()/g
+    return
+  }
+  const first = roots.map(root => root.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
+  REL = new RegExp(
+    '`((?:' + first + ')[\\\\/][^`\\n]+)`|(?<![A-Za-z0-9:\\\\/._-])((?:' + first + ')[\\\\/][^\\s`"\'<>|*?()[\\]]+)',
+    'gi',
+  )
+}
+
 // Path -> colour index, handed out in order of first sight and kept for the session,
 // so a path keeps its colour wherever it shows up again.
 const colours = new Map<string, number>()
@@ -30,11 +65,57 @@ function dotFor(path: string) {
   return DOTS[index]
 }
 
-// The distinct paths of a text, in order of appearance.
+// Icon for the kind of a path, then its dot: ▶ video, ▢ image, ≡ text (md, txt), 📁 folder (no extension), none for other files.
+const VIDEO = /\.(mp4|mov|mkv|avi|webm|m4v|mxf)$/i
+const IMAGE = /\.(png|jpe?g|webp|bmp|gif|tiff?|exr|hdr|tga|dpx)$/i
+function markFor(path: string) {
+  const last = path.split('\\').filter(part => part !== '').pop() ?? ''
+  const icon = VIDEO.test(last)
+    ? '▶'
+    : IMAGE.test(last)
+      ? '▢'
+      : /\.(md|txt)$/i.test(last)
+        ? '≡'
+        : /\.[A-Za-z0-9]{1,5}$/.test(last)
+          ? ''
+          : '📁'
+  return icon === '' ? dotFor(path) : `${icon} ${dotFor(path)}`
+}
+
+// A cleaned path as an absolute one: relative paths get the project folder (and their alias) in front.
+function absolute(raw: string) {
+  const path = clean(raw)
+  if (/^[A-Za-z]:\\/.test(path)) {
+    return path
+  }
+  if (base === '') {
+    return ''
+  }
+  const [first = '', ...rest] = path.split('\\')
+  const alias = Object.keys(ALIASES).find(key => key.toLowerCase() === first.toLowerCase())
+  return base + '\\' + (alias === undefined ? path : [ALIASES[alias], ...rest].join('\\'))
+}
+
+// The project folder of the session, so relative paths open in the project the chat runs in.
+async function syncBase($: Engine) {
+  try {
+    const root = (await $.session.root()).replace(/\//g, '\\').replace(/\\+$/, '')
+    if (/^[A-Za-z]:\\/.test(root)) {
+      base = root
+    }
+  } catch {
+    // keep the last known folder
+  }
+}
+
+// The distinct paths of a text (absolute and relative), in order of appearance, as absolute paths.
 function pathsOf(text: string) {
+  const hits = [...text.matchAll(PATH), ...text.matchAll(REL)]
+    .map(match => ({ at: match.index ?? 0, raw: match[1] ?? match[2] ?? '' }))
+    .sort((a, b) => a.at - b.at)
   const found: string[] = []
-  for (const match of text.matchAll(PATH)) {
-    const path = clean(match[1] ?? match[2] ?? '')
+  for (const { raw } of hits) {
+    const path = absolute(raw)
     if (path.length > 3 && !found.some(known => known.toLowerCase() === path.toLowerCase())) {
       found.push(path)
     }
@@ -194,7 +275,9 @@ async function open($: Engine, path: string) {
   }
 }
 
-export const register: Register = on => {
+export const register: Register = (on, options) => {
+  configure(options)
+
   on('ui.render', { component: 'Pane', requestId: VIEWER }, async ($, e) => {
     const { Box, Text, Markdown } = $.ui.resolve(e)
     if (viewing === undefined) {
@@ -210,18 +293,29 @@ export const register: Register = on => {
 
   // Paths in the transcript get their dot in front.
   on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
+    await syncBase($)
     // A code block has a copy button, so no dot goes inside it: its dots stand on a
-    // line above, in the order of its paths. Everywhere else the dot sits before the path.
-    const inline = (part: string) =>
-      part.replace(PATH, (whole, quoted, bare) => {
-        const path = clean(quoted ?? bare ?? '')
-        return path.length > 3 ? `${dotFor(path)} ${whole}` : whole
-      })
+    // line above, in the order of its paths. Everywhere else the dot sits before the path,
+    // which shows only as its file name (a folder with its parent); the button keeps the full path.
+    const dotted = (whole: string, quoted?: string, bare?: string) => {
+      const raw = quoted ?? bare ?? ''
+      const path = absolute(raw)
+      if (path.length <= 3) {
+        return whole
+      }
+      const tail = quoted === undefined ? (raw.match(/[.,;:!]+$/)?.[0] ?? '') : ''
+      // A last part without an extension is a folder: it shows with its parent, as many folders share a name.
+      const parts = path.split('\\').filter(part => part !== '')
+      const isFolder = !/\.[A-Za-z0-9]{1,5}$/.test(parts[parts.length - 1] ?? '')
+      const name = parts.slice(isFolder ? -2 : -1).join('\\') || path
+      return `${markFor(path)} \`${name}\`${tail}`
+    }
+    const inline = (part: string) => part.replace(PATH, dotted).replace(REL, dotted)
     const text = e.props.text
       .split(/(^```[^\n]*\n[\s\S]*?^```[^\n]*$)/m)
       .map((part, i) =>
         i % 2 === 0 ? inline(part) : (() => {
-          const dots = pathsOf(part).map(dotFor)
+          const dots = pathsOf(part).map(markFor)
           return dots.length === 0 ? part : dots.join(' ') + '\n\n' + part
         })(),
       )
@@ -232,10 +326,7 @@ export const register: Register = on => {
   // The buttons sit left of whatever the band holds beneath (the H button).
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const below = await next(e)
-    if (e.props.hasSurvey) {
-      return below
-    }
-
+    await syncBase($)
     const messages = await $.session.messages()
     // Newest replies first, until the buttons are full; shown oldest to newest.
     const paths: string[] = []
@@ -258,15 +349,24 @@ export const register: Register = on => {
     }
 
     const { Box, Button } = $.ui.resolve(e)
-    return (
+    const buttons = (
       <Box justifyContent="flex-end">
         {paths.map((path, i) => (
           <Button key={'path-' + i} label={dotFor(path)} plain onPress={() => {
             $.clock.after(0, () => void open($, path))
           }} />
         ))}
-        {below.type !== 'engine' && below}
+        {!e.props.hasSurvey && below.type !== 'engine' && below}
       </Box>
+    )
+    // A survey or choice box holds the band: the buttons go on a row above it, the box stays untouched.
+    return e.props.hasSurvey ? (
+      <Box flexDirection="column">
+        {buttons}
+        {below}
+      </Box>
+    ) : (
+      buttons
     )
   })
 }

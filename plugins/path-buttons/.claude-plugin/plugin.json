@@ -1,6 +1,20 @@
 {
   "name": "path-buttons",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Runde Farb-Buttons neben dem Prompt: öffnen die im Claude-Text genannten Pfade mit einem Klick (Ordner in Directory Opus, Bilder und Videos im Chaos Player, .md/.txt im Sidepanel).",
-  "author": { "name": "gottesgerl" }
+  "author": { "name": "gottesgerl" },
+  "userConfig": {
+    "relativeFolders": {
+      "type": "string",
+      "title": "Ordner für relative Pfade",
+      "description": "Erste Ordner, ab denen ein relativer Pfad (z. B. blender/shot/file.png) als Pfad im Projektordner zählt, durch Komma getrennt. Leer: nur absolute Pfade.",
+      "default": ""
+    },
+    "aliases": {
+      "type": "string",
+      "title": "Kurznamen für Ordner",
+      "description": "Kurzname=Ordner im Projekt, durch Semikolon getrennt, z. B. shot01=blender/shots/shot01",
+      "default": ""
+    }
+  }
 }

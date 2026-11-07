@@ -11,22 +11,43 @@ Das `handoff-button` braucht `path-buttons` nicht, und `path-buttons` braucht ke
 
 ## Installation
 
-Im Terminal-Prompt von Claude Code (nicht in der Desktop-App):
+In einer PowerShell (Claude Code muss installiert sein, das Konto spielt keine Rolle):
 
+```powershell
+claude plugin marketplace add gottesgerl/claude_mod_pathbuttons
+claude plugin install path-buttons@path-buttons
+claude plugin install handoff-button@path-buttons
 ```
-/plugin install path-buttons --marketplace gottesgerl/claude_mod_pathbuttons
-/plugin install handoff-button --marketplace gottesgerl/claude_mod_pathbuttons
+
+Danach Claude neu starten. Die Mods laufen in jeder neuen Sitzung, auch in der Desktop-App.
+
+Update auf eine neue Version:
+
+```powershell
+claude plugin marketplace update path-buttons
+claude plugin update path-buttons
+claude plugin update handoff-button
 ```
 
-Beim ersten Mal mit `y` das Marketplace hinzufügen, dann einen Bereich wählen (User). Die Mods laufen danach in jeder neuen Sitzung, auch in der Desktop-App.
+Hast du ein Mod schon als eigenen Ordner unter `~/.claude/mods/` eingetragen (`CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json`), entferne den Eintrag, sonst läuft das Mod doppelt.
 
-Update nach neuen Versionen: `claude plugin update path-buttons` und `claude plugin update handoff-button`.
+### Claude die Pfade richtig schreiben lassen
 
-Hast du `handoff-button` schon als eigenen Ordner unter `~/.claude/mods/` eingetragen (`CLAUDE_CODE_PLUGIN_DIRS`), entferne den Eintrag und den Ordner, sonst läuft das Mod doppelt.
+Die Buttons erscheinen nur für Pfade, die Claude vollständig schreibt. Füge dazu diesen Abschnitt in `~/.claude/CLAUDE.md` ein (die Datei gilt für alle Projekte; gibt es sie nicht, lege sie an):
+
+```markdown
+## Pfade in Chat-Antworten als path-buttons
+
+Der Mod `path-buttons` macht aus Pfaden in Antworten bunte Buttons, erkennt aber nur vollständige Pfade mit Laufwerksbuchstaben.
+
+- Jede Datei und jeden Ordner als absoluten Windows-Pfad in Backticks schreiben, z. B. `C:\Projekte\beispiel\datei.png`.
+- Keine relativen Pfade und keine Markdown-Links auf lokale Dateien.
+- Höchstens 7 Pfade pro Antwort (der Mod hat 7 Farben), die wichtigsten zuerst.
+```
 
 ## path-buttons
 
-Jeder Pfad bekommt einen Farbpunkt (🔴🟠🟢🔵🟣🟡⚪). Derselbe Punkt steht im Antworttext vor dem Pfad, so ist klar, welcher Button zu welchem Pfad gehört. In Codeblöcken steht der Punkt in einer Zeile darüber, damit der Copy-Button nur den reinen Pfad kopiert.
+Jeder Pfad bekommt einen Farbpunkt (🔴🟠🟢🔵🟣🟡⚪). Derselbe Punkt steht im Antworttext vor dem Pfad, so ist klar, welcher Button zu welchem Pfad gehört. Davor zeigt ein Zeichen die Art: ▶ Video, ▢ Bild, ≡ Text, 📁 Ordner. Im Text steht nur der Dateiname (bei Ordnern mit dem übergeordneten Ordner), der Button behält den vollen Pfad. In Codeblöcken stehen Zeichen und Punkt in einer Zeile darüber, damit der Copy-Button nur den reinen Pfad kopiert.
 
 | Pfad | Öffnet in |
 | --- | --- |
@@ -37,7 +58,27 @@ Jeder Pfad bekommt einen Farbpunkt (🔴🟠🟢🔵🟣🟡⚪). Derselbe Punkt
 
 Directory Opus und der Chaos Player werden in den Program-Files-Ordnern der Maschine gesucht, es ist nichts fest eingetragen. Sind sie nicht installiert, greift die Standard-App.
 
-Die Buttons zeigen die Pfade der letzten Antworten, die neuesten rechts, höchstens sieben.
+Die Buttons zeigen die Pfade der letzten Antworten, die neuesten rechts, höchstens sieben. Ist eine Auswahlbox offen, stehen sie in einer Zeile darüber.
+
+### Relative Pfade (optional)
+
+Ohne Einstellung erkennt das Mod nur absolute Pfade. Soll es auch kurze Pfade wie `blender\shot01\frame.png` erkennen, nenne die ersten Ordner, ab denen das gilt. Sie werden dann im Projektordner der Sitzung gesucht. In `~/.claude/settings.json`:
+
+```json
+"pluginConfigs": {
+  "path-buttons@path-buttons": {
+    "options": {
+      "relativeFolders": "blender, renders, docs",
+      "aliases": "shot01=blender/shots/shot01"
+    }
+  }
+}
+```
+
+- `relativeFolders`: erste Ordner, durch Komma getrennt.
+- `aliases`: Kurzname=Ordner im Projekt, durch Semikolon getrennt. `shot01\frame.png` öffnet dann `<Projekt>\blender\shots\shot01\frame.png`.
+
+Die beiden Felder lassen sich auch in Claude unter `/config` setzen.
 
 Hinweise:
 - Nur Windows, Pfade mit Laufwerksbuchstaben (`C:\...`, `P:/...`). Pfade mit Leerzeichen werden nur in Backticks erkannt.
