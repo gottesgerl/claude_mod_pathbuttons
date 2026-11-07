@@ -45,6 +45,8 @@ Der Mod `path-buttons` macht aus Pfaden in Antworten bunte Buttons, erkennt aber
 - Höchstens 7 Pfade pro Antwort (der Mod hat 7 Farben), die wichtigsten zuerst.
 ```
 
+Bei neuen Projekten muss nichts eingetragen werden: Der Hauptordner eines Projekts (der Ordner, in dem die Claude-Sitzung läuft) gilt automatisch als Basis für relative Pfade. Ein kurzer Pfad wie `docs\notizen.md` wird in jedem Projekt im jeweiligen Hauptordner gesucht, sobald `docs` unter [Relative Pfade](#relative-pfade-optional) als Ordner genannt ist.
+
 ## path-buttons
 
 Jeder Pfad bekommt einen Farbpunkt (🔴🟠🟢🔵🟣🟡⚪). Derselbe Punkt steht im Antworttext vor dem Pfad, so ist klar, welcher Button zu welchem Pfad gehört. Davor zeigt ein Zeichen die Art: ▶ Video, ▢ Bild, ≡ Text, 📁 Ordner. Im Text steht nur der Dateiname (bei Ordnern mit dem übergeordneten Ordner), der Button behält den vollen Pfad. In Codeblöcken stehen Zeichen und Punkt in einer Zeile darüber, damit der Copy-Button nur den reinen Pfad kopiert.
