@@ -123,16 +123,21 @@ async function openPdf($: Engine, back: Back) {
   }
 }
 
-// C button: the same compaction /compact runs, straight away.
+// C button: runs /compact straight away. The desktop app's session is headless, where
+// $.session.compact is refused, so the command runs as /compact does; a typed /compact is the last resort.
 async function compact($: Engine) {
   try {
-    const { skip } = await $.session.compact()
-    await log($, 'compact: ' + (skip ? 'skipped by a hook' : 'ok'))
-    if (skip) {
-      $.ui.toast('Compact wurde von einem anderen Mod verhindert.')
-    }
+    const ran = await $.command.run({ command: 'compact' })
+    await log($, 'compact via command: ' + JSON.stringify(ran).slice(0, 200))
+    return
   } catch (error) {
-    await log($, 'compact error: ' + String(error))
+    await log($, 'compact command error: ' + String(error))
+  }
+  try {
+    await $.prompt.submit({ text: '/compact', asUser: true })
+    await log($, 'compact submitted as prompt')
+  } catch (error) {
+    await log($, 'compact prompt error: ' + String(error))
     $.ui.toast('Compact ging nicht: ' + String(error).slice(0, 200))
   }
 }
