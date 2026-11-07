@@ -102,4 +102,6 @@ Der `H`-Button in der Leiste über dem Prompt:
 3. benennt den Chat `… [A]`, leert ihn und startet ihn als `… [B]` mit der Übergabe,
 4. zeigt im neuen Chat einen `<<`-Button, der das PDF des alten Chats öffnet.
 
+Der `C`-Button links neben dem H führt sofort `/compact` aus, ohne Nachfrage. Läuft gerade eine Antwort oder geht Compact nicht, erscheint eine kurze Meldung.
+
 `/import-chat` lädt einen exportierten Chat in den aktuellen Chat. Das PDF wird mit Microsoft Edge im Hintergrund erzeugt. Ist Edge nicht zu finden, entfällt das PDF.

@@ -123,6 +123,20 @@ async function openPdf($: Engine, back: Back) {
   }
 }
 
+// C button: the same compaction /compact runs, straight away.
+async function compact($: Engine) {
+  try {
+    const { skip } = await $.session.compact()
+    await log($, 'compact: ' + (skip ? 'skipped by a hook' : 'ok'))
+    if (skip) {
+      $.ui.toast('Compact wurde von einem anderen Mod verhindert.')
+    }
+  } catch (error) {
+    await log($, 'compact error: ' + String(error))
+    $.ui.toast('Compact ging nicht: ' + String(error).slice(0, 200))
+  }
+}
+
 async function log($: Engine, line: string) {
   await resolvePaths($)
   logText += new Date().toISOString() + ' ' + line + '\n'
@@ -379,13 +393,16 @@ export const register: Register = on => {
     const back = backTo
 
     return (
-      <Box justifyContent="flex-end">
+      <Box justifyContent="flex-end" gap="sm">
         {others.type !== 'engine' && others}
         {back !== undefined && (
           <Button key="back" label="<<" dimColor onPress={() => {
             $.clock.after(0, () => void openPdf($, back))
           }} />
         )}
+        <Button key="compact" label="C" dimColor onPress={() => {
+          $.clock.after(0, () => void compact($))
+        }} />
         <Button key="handoff" label="H" dimColor onPress={() => {
           const isWorking = e.props.isWorking
           $.clock.after(0, () => void handoff($, isWorking))
