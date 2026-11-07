@@ -1,6 +1,6 @@
 {
   "name": "path-buttons",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Runde Farb-Buttons neben dem Prompt: öffnen die im Claude-Text genannten Pfade mit einem Klick (Ordner in Directory Opus, Bilder und Videos im Chaos Player, .md/.txt im Sidepanel).",
   "author": { "name": "gottesgerl" },
   "userConfig": {

@@ -2,7 +2,7 @@ import type { Engine, Register } from 'claude-code'
 
 // One round, single-colour emoji per path: the same dot sits in front of the path
 // in the text and on its button, so the colour is the link between the two.
-const DOTS = ['🔴', '🟠', '🟢', '🔵', '🟣', '🟡', '⚪']
+const DOTS = ['🔴', '🟠', '🟢', '🔵', '🟡', '🟣', '⚪']
 const MAX_BUTTONS = DOTS.length
 
 // Backticked paths may hold spaces; bare ones end at whitespace or quoting.
@@ -55,6 +55,14 @@ const clean = (raw: string) =>
     .replace(/:\d+(:\d+)?$/, '')
     .replace(/\//g, '\\')
 
+// The shape tells the kind, the colour links text and button: hearts for videos, squares for
+// images, dots for everything else. All lists share the colour order.
+const HEARTS = ['❤️', '🧡', '💚', '💙', '💛', '💜', '🤍']
+const SQUARES = ['🟥', '🟧', '🟩', '🟦', '🟨', '🟪', '⬜']
+const VIDEO = /\.(mp4|mov|mkv|avi|webm|m4v|mxf)$/i
+const IMAGE = /\.(png|jpe?g|webp|bmp|gif|tiff?|exr|hdr|tga|dpx)$/i
+const TEXT = /\.(md|txt)$/i
+
 function dotFor(path: string) {
   const key = path.toLowerCase()
   let index = colours.get(key)
@@ -62,25 +70,11 @@ function dotFor(path: string) {
     index = nextColour++ % DOTS.length
     colours.set(key, index)
   }
-  return DOTS[index]
+  const set = VIDEO.test(path) ? HEARTS : IMAGE.test(path) ? SQUARES : DOTS
+  return set[index]
 }
 
-// Icon for the kind of a path, then its dot: ▶ video, ▢ image, ≡ text (md, txt), 📁 folder (no extension), none for other files.
-const VIDEO = /\.(mp4|mov|mkv|avi|webm|m4v|mxf)$/i
-const IMAGE = /\.(png|jpe?g|webp|bmp|gif|tiff?|exr|hdr|tga|dpx)$/i
-function markFor(path: string) {
-  const last = path.split('\\').filter(part => part !== '').pop() ?? ''
-  const icon = VIDEO.test(last)
-    ? '▶'
-    : IMAGE.test(last)
-      ? '▢'
-      : /\.(md|txt)$/i.test(last)
-        ? '≡'
-        : /\.[A-Za-z0-9]{1,5}$/.test(last)
-          ? ''
-          : '📁'
-  return icon === '' ? dotFor(path) : `${icon} ${dotFor(path)}`
-}
+const markFor = dotFor
 
 // A cleaned path as an absolute one: relative paths get the project folder (and their alias) in front.
 function absolute(raw: string) {
@@ -205,8 +199,7 @@ if ($null -ne $target) { [OpusWin]::Front($target); "front" } else { "no lister"
 
 const MEDIA = /\.(png|jpe?g|webp|bmp|gif|tiff?|exr|hdr|tga|dpx|mp4|mov|mkv|avi|webm|m4v|mxf)$/i
 
-// Text files show in a pane of this chat instead of an outside app.
-const TEXT = /\.(md|txt)$/i
+// Text files (TEXT, above) show in a pane of this chat instead of an outside app.
 const VIEWER = 'path-viewer'
 const VIEW_MAX_CHARS = 200000
 let viewing: { path: string; text: string; isMarkdown: boolean } | undefined
@@ -310,7 +303,22 @@ export const register: Register = (on, options) => {
       const name = parts.slice(isFolder ? -2 : -1).join('\\') || path
       return `${markFor(path)} \`${name}\`${tail}`
     }
-    const inline = (part: string) => part.replace(PATH, dotted).replace(REL, dotted)
+    // Marked paths wait as placeholders, so the relative pass cannot match a shortened name again.
+    const inline = (part: string) => {
+      const done: string[] = []
+      const park = (...args: string[]) => {
+        const marked = dotted(args[0], args[1], args[2])
+        if (marked === args[0]) {
+          return marked
+        }
+        done.push(marked)
+        return `\u0000${done.length - 1}\u0000`
+      }
+      return part
+        .replace(PATH, park)
+        .replace(REL, park)
+        .replace(/\u0000(\d+)\u0000/g, (_, i) => done[Number(i)])
+    }
     const text = e.props.text
       .split(/(^```[^\n]*\n[\s\S]*?^```[^\n]*$)/m)
       .map((part, i) =>

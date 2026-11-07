@@ -49,7 +49,15 @@ Bei neuen Projekten muss nichts eingetragen werden: Der Hauptordner eines Projek
 
 ## path-buttons
 
-Jeder Pfad bekommt einen Farbpunkt (🔴🟠🟢🔵🟣🟡⚪). Derselbe Punkt steht im Antworttext vor dem Pfad, so ist klar, welcher Button zu welchem Pfad gehört. Davor zeigt ein Zeichen die Art: ▶ Video, ▢ Bild, ≡ Text, 📁 Ordner. Im Text steht nur der Dateiname (bei Ordnern mit dem übergeordneten Ordner), der Button behält den vollen Pfad. In Codeblöcken stehen Zeichen und Punkt in einer Zeile darüber, damit der Copy-Button nur den reinen Pfad kopiert.
+Jeder Pfad bekommt ein farbiges Zeichen. Dasselbe Zeichen steht im Antworttext vor dem Pfad und auf seinem Button, so ist klar, welcher Button zu welchem Pfad gehört. Die Form zeigt die Art:
+
+| Art | Zeichen |
+| --- | --- |
+| Video | Herz ❤️🧡💚💙💛💜🤍 |
+| Bild | Quadrat 🟥🟧🟩🟦🟨🟪⬜ |
+| alles andere (Ordner, Text, sonstige Dateien) | Kreis 🔴🟠🟢🔵🟡🟣⚪ |
+
+Im Text steht nur der Dateiname (bei Ordnern mit dem übergeordneten Ordner), der Button behält den vollen Pfad. In Codeblöcken stehen die Zeichen in einer Zeile darüber, damit der Copy-Button nur den reinen Pfad kopiert.
 
 | Pfad | Öffnet in |
 | --- | --- |
