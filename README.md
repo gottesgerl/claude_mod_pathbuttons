@@ -71,7 +71,7 @@ Directory Opus und der Chaos Player werden in den Program-Files-Ordnern der Masc
 Die Buttons zeigen die Pfade der letzten Antworten, die neuesten rechts, höchstens sieben. Ist eine Auswahlbox offen, stehen sie in einer Zeile darüber.
 
 In der Leiste:
-- **Bilder und Videos** erscheinen als kleines Vorschaubild mit abgerundetem Rahmen in der Farbe ihres Symbols. Videos zeigen das Bild bei Sekunde 1. Die Vorschau erzeugt `ffmpeg` (gesucht unter `Program Files\ffmpeg\bin`, sonst im PATH) als kleines JPEG im Temp-Ordner. Ohne ffmpeg, oder bis die Vorschau fertig ist, steht das Symbol da.
+- **Bilder und Videos** erscheinen als kleines, helles Schwarz-Weiß-Vorschaubild mit abgerundeten Ecken und einem Balken in der Farbe ihres Symbols oben und unten. Videos zeigen das Bild bei Sekunde 1. Die Vorschau erzeugt `ffmpeg` (gesucht unter `Program Files\ffmpeg\bin`, sonst im PATH) als kleines JPEG im Temp-Ordner. Ohne ffmpeg, oder bis die Vorschau fertig ist, steht das Symbol da.
 - **Linksklick** öffnet den Pfad, **Rechtsklick** kopiert den vollen Pfad in die Zwischenablage (kurz erscheint „Pfad kopiert“).
 - **Überfahren** zeigt den Dateinamen gedämpft links in der Leiste.
 

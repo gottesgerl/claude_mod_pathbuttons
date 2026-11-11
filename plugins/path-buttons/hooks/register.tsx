@@ -270,12 +270,12 @@ async function open($: Engine, path: string) {
 
 // Preview of the newest image among the buttons, drawn as a small Svg in the band.
 // ffmpeg makes a small PNG in the temp folder; render only reads the cache, the work runs after it.
-const THUMB_HEIGHT = 56
-const THUMB_DRAWN = 26
+const THUMB_HEIGHT = 72
+const THUMB_DRAWN = 30
 const thumbs = new Map<string, { jpg: string; width: number; height: number }>()
 const thumbsPending = new Set<string>()
 const thumbsFailed = new Set<string>()
-// Frame colours in the order of the symbol lists (red, orange, green, blue, yellow, purple, white as grey).
+// Letterbox colours in the order of the symbol lists (red, orange, green, blue, yellow, purple, white as grey).
 const FRAMES = ['#e0303a', '#f5821f', '#3cb44b', '#3a78d8', '#f2c40f', '#8e44ad', '#b0b0b0']
 let FFMPEG = ''
 let isFfmpegResolved = false
@@ -308,7 +308,7 @@ async function makeThumb($: Engine, path: string) {
     // A small JPEG: the band's whole drawing has a size limit, and seven PNG previews outgrow it.
     const out = temp + '\\path-buttons-thumb-' + (hash >>> 0).toString(16) + '.jpg'
     const started = Date.now() - 2000
-    const frame = ['-frames:v', '1', '-vf', 'scale=-2:' + THUMB_HEIGHT, '-q:v', '6', out]
+    const frame = ['-frames:v', '1', '-vf', 'scale=-2:' + THUMB_HEIGHT + ',hue=s=0,lutyuv=y=115+val*0.45', '-q:v', '6', out]
     // A video shows its frame at one second (a poster); a clip shorter than that its first frame.
     if (VIDEO.test(path)) {
       await $.process.run([FFMPEG, '-y', '-loglevel', 'error', '-ss', '1', '-i', path, ...frame], { timeoutMs: 15000 })
@@ -495,7 +495,7 @@ export const register: Register = (on, options) => {
     }
 
     const { Box, Button, Text, Svg, Client } = $.ui.resolve(e) as any
-    // Images and videos show as a preview with a frame in their symbol's colour; until the
+    // Images and videos show as a pale grey preview with bars in their symbol's colour; until the
     // preview is ready (or when it cannot be made) the symbol stands in.
     const previewOf = (path: string, i: number) => {
       if (Svg === undefined || !MEDIA.test(path)) {
@@ -516,20 +516,21 @@ export const register: Register = (on, options) => {
       }
       const symbol = dotFor(path)
       const colour = FRAMES[colours.get(key) ?? 0]
+      const bar = Math.max(2, Math.round(thumb.height * 0.13))
       const width = Math.max(1, Math.round((THUMB_DRAWN * thumb.width) / Math.max(1, thumb.height)))
       const data = 'data:image/jpeg;base64,' + thumb.jpg
       const source =
         `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ` +
         `width="${thumb.width}" height="${thumb.height}" viewBox="0 0 ${thumb.width} ${thumb.height}">` +
-        // The picture is clipped to the frame's outer edge, so its corners are round too.
+        // A pale grey picture with round corners and a bar in the symbol's colour at top and bottom.
         `<clipPath id="round"><rect width="${thumb.width}" height="${thumb.height}" rx="6.5"/></clipPath>` +
         `<image width="${thumb.width}" height="${thumb.height}" href="${data}" xlink:href="${data}" clip-path="url(#round)"/>` +
-        `<rect x="1.5" y="1.5" width="${thumb.width - 3}" height="${thumb.height - 3}" rx="5" fill="none" ` +
-        `stroke="${colour}" stroke-width="3"/></svg>`
+        `<g clip-path="url(#round)" fill="${colour}"><rect width="${thumb.width}" height="${bar}"/>` +
+        `<rect y="${thumb.height - bar}" width="${thumb.width}" height="${bar}"/></g></svg>`
       // A Button holds only text, so an empty Button lies over the preview and takes the click.
       const spaces = ' '.repeat(Math.max(1, Math.round(width / 14)))
       return (
-        <Box key={'thumb-box-' + i} position="relative">
+        <Box key={'thumb-box-' + i} position="relative" marginLeft="xs">
           <Svg key={'thumb-' + i} source={source} alt={symbol + ' ' + (path.split('\\').pop() ?? path)} width={width} height={THUMB_DRAWN} />
           <Box position="absolute" top={0} left={0} right={0} bottom={0} justifyContent="center" alignItems="center">
             {Client !== undefined ? (
