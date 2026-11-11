@@ -142,6 +142,24 @@ async function compact($: Engine) {
   }
 }
 
+// ⌾ button: runs /advisor opus straight away, the same way C runs /compact.
+async function advisor($: Engine) {
+  try {
+    const ran = await $.command.run({ command: 'advisor', args: 'opus' })
+    await log($, 'advisor via command: ' + JSON.stringify(ran).slice(0, 200))
+    return
+  } catch (error) {
+    await log($, 'advisor command error: ' + String(error))
+  }
+  try {
+    await $.prompt.submit({ text: '/advisor opus', asUser: true })
+    await log($, 'advisor submitted as prompt')
+  } catch (error) {
+    await log($, 'advisor prompt error: ' + String(error))
+    $.ui.toast('Advisor ging nicht: ' + String(error).slice(0, 200))
+  }
+}
+
 // H button: asks for a handover, as if the person had typed it. It runs once the chat is idle.
 async function askHandover($: Engine) {
   try {
@@ -308,7 +326,55 @@ async function exportedChats($: Engine) {
     .sort((a, b) => b.mtimeMs - a.mtimeMs)
 }
 
+// The band's buttons, their dim hover hints, and what a press runs.
+type ButtonId = 'back' | 'advisor' | 'compact' | 'ask-handover' | 'handoff'
+const HINTS: Record<ButtonId, string> = {
+  back: 'Alter Chat (PDF)',
+  advisor: 'Advisor (Opus)',
+  compact: 'Compact',
+  'ask-handover': 'Handover anfragen',
+  handoff: 'Volles Handover',
+}
+let hint: ButtonId | undefined
+let lastIsWorking = false
+let lastBack: Back | undefined
+
+async function pressButton($: Engine, id: ButtonId) {
+  if (id === 'back') {
+    if (lastBack !== undefined) {
+      await openPdf($, lastBack)
+    }
+  } else if (id === 'advisor') {
+    await advisor($)
+  } else if (id === 'compact') {
+    await compact($)
+  } else if (id === 'ask-handover') {
+    await askHandover($)
+  } else {
+    await handoff($, lastIsWorking)
+  }
+}
+
 export const register: Register = on => {
+  // The hover regions (hover.tsx) post the pointer coming and going, and a left click.
+  on('ui.message', async ($, e) => {
+    const data = (e as any).data as { action?: string; id?: string } | undefined
+    const id = data?.id as ButtonId | undefined
+    if (id === undefined || !(id in HINTS)) {
+      return {}
+    }
+    if (data?.action === 'press') {
+      $.clock.after(0, () => void pressButton($, id))
+    } else if (data?.action === 'enter' || data?.action === 'leave') {
+      const next = data.action === 'enter' ? id : hint === id ? undefined : hint
+      if (next !== hint) {
+        hint = next
+        $.ui.invalidate('ui.render')
+      }
+    }
+    return {}
+  })
+
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'import-chat',
@@ -406,24 +472,38 @@ export const register: Register = on => {
     }
     const back = backTo
 
-    return (
-      <Box justifyContent="flex-end" gap="sm">
-        {others.type !== 'engine' && others}
-        {back !== undefined && (
-          <Button key="back" label="<<" dimColor onPress={() => {
-            $.clock.after(0, () => void openPdf($, back))
-          }} />
+    lastIsWorking = e.props.isWorking
+    lastBack = back
+    const { Text, Client } = $.ui.resolve(e) as any
+    // Each button keeps its look; an invisible region of hover.tsx over it shows a dim hint
+    // while the pointer is on it and runs the action on a click. Without regions, plain buttons.
+    const button = (id: ButtonId, label: string) => (
+      <Box key={'wrap-' + id} position="relative">
+        <Button key={id} label={label} dimColor onPress={() => {
+          $.clock.after(0, () => void pressButton($, id))
+        }} />
+        {Client !== undefined && (
+          <Box position="absolute" top={0} left={0} right={0} bottom={0}>
+            <Client key={'hover-' + id} module="./hover.tsx" props={{ id }} width="100%" height="100%" />
+          </Box>
         )}
-        <Button key="compact" label="C" dimColor onPress={() => {
-          $.clock.after(0, () => void compact($))
-        }} />
-        <Button key="ask-handover" label="H" dimColor onPress={() => {
-          $.clock.after(0, () => void askHandover($))
-        }} />
-        <Button key="handoff" label="⤓" dimColor onPress={() => {
-          const isWorking = e.props.isWorking
-          $.clock.after(0, () => void handoff($, isWorking))
-        }} />
+      </Box>
+    )
+
+    return (
+      <Box justifyContent="flex-end" alignItems="center" gap="sm">
+        {/* The hint stands leftmost, where path-buttons shows a hovered file name. */}
+        {hint !== undefined && (
+          <Box key="hint" marginRight="md">
+            <Text dimColor>{HINTS[hint]}</Text>
+          </Box>
+        )}
+        {others.type !== 'engine' && others}
+        {back !== undefined && button('back', '<<')}
+        {button('advisor', '⌾')}
+        {button('compact', 'C')}
+        {button('ask-handover', 'H')}
+        {button('handoff', '⤓')}
       </Box>
     )
   })

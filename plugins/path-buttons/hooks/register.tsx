@@ -268,8 +268,146 @@ async function open($: Engine, path: string) {
   }
 }
 
+// Preview of the newest image among the buttons, drawn as a small Svg in the band.
+// ffmpeg makes a small PNG in the temp folder; render only reads the cache, the work runs after it.
+const THUMB_HEIGHT = 56
+const THUMB_DRAWN = 26
+const thumbs = new Map<string, { jpg: string; width: number; height: number }>()
+const thumbsPending = new Set<string>()
+const thumbsFailed = new Set<string>()
+// Frame colours in the order of the symbol lists (red, orange, green, blue, yellow, purple, white as grey).
+const FRAMES = ['#e0303a', '#f5821f', '#3cb44b', '#3a78d8', '#f2c40f', '#8e44ad', '#b0b0b0']
+let FFMPEG = ''
+let isFfmpegResolved = false
+
+async function resolveFfmpeg($: Engine) {
+  if (isFfmpegResolved) {
+    return
+  }
+  isFfmpegResolved = true
+  const candidates = [await $.env.get('ProgramFiles'), await $.env.get('ProgramW6432')]
+  for (const root of candidates) {
+    if (root !== undefined && FFMPEG === '' && (await $.fs.exists(root + '\\ffmpeg\\bin\\ffmpeg.exe'))) {
+      FFMPEG = root + '\\ffmpeg\\bin\\ffmpeg.exe'
+    }
+  }
+  if (FFMPEG === '') {
+    FFMPEG = 'ffmpeg'
+  }
+}
+
+async function makeThumb($: Engine, path: string) {
+  const key = path.toLowerCase()
+  try {
+    await resolveFfmpeg($)
+    let hash = 0
+    for (const char of key) {
+      hash = (hash * 31 + char.charCodeAt(0)) | 0
+    }
+    const temp = (await $.env.get('TEMP')) ?? 'C:\\Windows\\Temp'
+    // A small JPEG: the band's whole drawing has a size limit, and seven PNG previews outgrow it.
+    const out = temp + '\\path-buttons-thumb-' + (hash >>> 0).toString(16) + '.jpg'
+    const started = Date.now() - 2000
+    const frame = ['-frames:v', '1', '-vf', 'scale=-2:' + THUMB_HEIGHT, '-q:v', '6', out]
+    // A video shows its frame at one second (a poster); a clip shorter than that its first frame.
+    if (VIDEO.test(path)) {
+      await $.process.run([FFMPEG, '-y', '-loglevel', 'error', '-ss', '1', '-i', path, ...frame], { timeoutMs: 15000 })
+    }
+    if (!VIDEO.test(path) || !(await $.fs.exists(out)) || (await $.fs.stat(out)).mtimeMs < started) {
+      const ran = await $.process.run([FFMPEG, '-y', '-loglevel', 'error', '-i', path, ...frame], { timeoutMs: 15000 })
+      if (ran.exitCode !== 0) {
+        thumbsFailed.add(key)
+        return
+      }
+    }
+    const { base64 } = await $.fs.read(out, { as: 'bytes' })
+    // JPEG size: the frame header (marker FFC0 to FFC2) holds height and width as 16-bit numbers.
+    const bytes = atob(base64)
+    let width = 0
+    let height = 0
+    for (let at = 2; at + 9 < bytes.length; ) {
+      if (bytes.charCodeAt(at) !== 0xff) {
+        break
+      }
+      const marker = bytes.charCodeAt(at + 1)
+      if (marker >= 0xc0 && marker <= 0xc2) {
+        height = (bytes.charCodeAt(at + 5) << 8) | bytes.charCodeAt(at + 6)
+        width = (bytes.charCodeAt(at + 7) << 8) | bytes.charCodeAt(at + 8)
+        break
+      }
+      at += 2 + ((bytes.charCodeAt(at + 2) << 8) | bytes.charCodeAt(at + 3))
+    }
+    if (width === 0 || height === 0) {
+      thumbsFailed.add(key)
+      return
+    }
+    thumbs.set(key, { jpg: base64, width, height })
+    $.ui.invalidate('ui.render')
+  } catch {
+    // no preview, no error; a failed image is not tried again in this session
+    thumbsFailed.add(key)
+  } finally {
+    thumbsPending.delete(key)
+  }
+}
+
+// One worker makes the previews in turn: of several waits started in one render only one ran,
+// which left the other previews waiting for good.
+const thumbQueue: string[] = []
+let isMakingThumbs = false
+
+async function makeThumbs($: Engine) {
+  try {
+    for (let path = thumbQueue.shift(); path !== undefined; path = thumbQueue.shift()) {
+      await makeThumb($, path)
+    }
+  } finally {
+    isMakingThumbs = false
+  }
+}
+
+// The path under the pointer in the band, if any: its file name shows dim beside the buttons.
+let hovered: string | undefined
+// A short note after a right click copied a path; it stands where the hovered name would.
+let copiedNote: string | undefined
+
 export const register: Register = (on, options) => {
   configure(options)
+
+  // The band's path regions (hit.tsx) post a left click as `open`, a right click as `show`.
+  on('ui.message', async ($, e) => {
+    const data = (e as any).data as { action?: string; path?: string } | undefined
+    const path = data?.path
+    if (typeof path !== 'string') {
+      return {}
+    }
+    if (data?.action === 'enter' || data?.action === 'leave') {
+      const next = data.action === 'enter' ? path : hovered === path ? undefined : hovered
+      if (next !== hovered) {
+        hovered = next
+        $.ui.invalidate('ui.render')
+      }
+    } else if (data?.action === 'show') {
+      // Right click: the full path goes to the clipboard, a dim note in the band says so for a moment.
+      const copied = await $.ui.copy({ text: path, surface: e.surface })
+      if (!copied.isCopied) {
+        $.ui.toast('Kopieren ging nicht: ' + path)
+        return {}
+      }
+      copiedNote = 'Pfad kopiert'
+      $.ui.invalidate('ui.render')
+      const note = copiedNote
+      $.clock.after(1500, () => {
+        if (copiedNote === note) {
+          copiedNote = undefined
+          $.ui.invalidate('ui.render')
+        }
+      })
+    } else if (data?.action === 'open') {
+      $.clock.after(0, () => void open($, path))
+    }
+    return {}
+  })
 
   on('ui.render', { component: 'Pane', requestId: VIEWER }, async ($, e) => {
     const { Box, Text, Markdown } = $.ui.resolve(e)
@@ -356,14 +494,73 @@ export const register: Register = (on, options) => {
       return below
     }
 
-    const { Box, Button } = $.ui.resolve(e)
+    const { Box, Button, Text, Svg, Client } = $.ui.resolve(e) as any
+    // Images and videos show as a preview with a frame in their symbol's colour; until the
+    // preview is ready (or when it cannot be made) the symbol stands in.
+    const previewOf = (path: string, i: number) => {
+      if (Svg === undefined || !MEDIA.test(path)) {
+        return null
+      }
+      const key = path.toLowerCase()
+      const thumb = thumbs.get(key)
+      if (thumb === undefined) {
+        if (!thumbsPending.has(key) && !thumbsFailed.has(key)) {
+          thumbsPending.add(key)
+          thumbQueue.push(path)
+          if (!isMakingThumbs) {
+            isMakingThumbs = true
+            $.clock.after(0, () => void makeThumbs($))
+          }
+        }
+        return null
+      }
+      const symbol = dotFor(path)
+      const colour = FRAMES[colours.get(key) ?? 0]
+      const width = Math.max(1, Math.round((THUMB_DRAWN * thumb.width) / Math.max(1, thumb.height)))
+      const data = 'data:image/jpeg;base64,' + thumb.jpg
+      const source =
+        `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ` +
+        `width="${thumb.width}" height="${thumb.height}" viewBox="0 0 ${thumb.width} ${thumb.height}">` +
+        // The picture is clipped to the frame's outer edge, so its corners are round too.
+        `<clipPath id="round"><rect width="${thumb.width}" height="${thumb.height}" rx="6.5"/></clipPath>` +
+        `<image width="${thumb.width}" height="${thumb.height}" href="${data}" xlink:href="${data}" clip-path="url(#round)"/>` +
+        `<rect x="1.5" y="1.5" width="${thumb.width - 3}" height="${thumb.height - 3}" rx="5" fill="none" ` +
+        `stroke="${colour}" stroke-width="3"/></svg>`
+      // A Button holds only text, so an empty Button lies over the preview and takes the click.
+      const spaces = ' '.repeat(Math.max(1, Math.round(width / 14)))
+      return (
+        <Box key={'thumb-box-' + i} position="relative">
+          <Svg key={'thumb-' + i} source={source} alt={symbol + ' ' + (path.split('\\').pop() ?? path)} width={width} height={THUMB_DRAWN} />
+          <Box position="absolute" top={0} left={0} right={0} bottom={0} justifyContent="center" alignItems="center">
+            {Client !== undefined ? (
+              <Client key={'hit-' + i} module="./hit.tsx" props={{ path, label: spaces }} width="100%" height="100%" />
+            ) : (
+              <Button key={'path-' + i} label={spaces} plain onPress={() => {
+                $.clock.after(0, () => void open($, path))
+              }} />
+            )}
+          </Box>
+        </Box>
+      )
+    }
     const buttons = (
-      <Box justifyContent="flex-end">
-        {paths.map((path, i) => (
+      <Box justifyContent="flex-end" alignItems="center">
+        {(copiedNote !== undefined || (hovered !== undefined && paths.includes(hovered))) && (
+          <Box key="hovered-name" marginRight="md">
+            <Text dimColor>{copiedNote ?? hovered?.split('\\').filter(part => part !== '').pop() ?? hovered}</Text>
+          </Box>
+        )}
+        {paths.map((path, i) => previewOf(path, i) ?? (Client !== undefined ? (
+          // A symbol as a region of hit.tsx: left click opens, right click shows the path.
+          // Symbols get room on both sides; previews stay close together.
+          <Box key={'hit-box-' + i} marginX="xs">
+            <Client key={'hit-' + i} module="./hit.tsx" props={{ path, label: dotFor(path) }} />
+          </Box>
+        ) : (
           <Button key={'path-' + i} label={dotFor(path)} plain onPress={() => {
             $.clock.after(0, () => void open($, path))
           }} />
-        ))}
+        )))}
         {!e.props.hasSurvey && below.type !== 'engine' && below}
       </Box>
     )

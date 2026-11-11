@@ -4,8 +4,8 @@ Zwei Mods für Claude Code (Desktop-App, Windows), die zusammen eine Leiste übe
 
 | Mod | Was es tut |
 | --- | --- |
-| `path-buttons` | Runde Farb-Buttons, einer pro Pfad aus den letzten Antworten. Ein Klick öffnet den Pfad. |
-| `handoff-button` | `C` für `/compact`, `H` bittet um ein Handover, `⤓` komprimiert den Chat, benennt ihn in `[A]` um, startet einen neuen Chat `[B]` mit der Übergabe und archiviert den alten. Setzt die Buttons von `path-buttons` links neben das H. |
+| `path-buttons` | Ein farbiges Symbol pro Pfad aus den letzten Antworten, bei Bildern und Videos ein Vorschaubild. Linksklick öffnet, Rechtsklick kopiert den Pfad. |
+| `handoff-button` | `⌾` für `/advisor opus`, `C` für `/compact`, `H` bittet um ein Handover, `⤓` komprimiert den Chat, benennt ihn in `[A]` um, startet einen neuen Chat `[B]` mit der Übergabe und archiviert den alten. Setzt die Buttons von `path-buttons` links neben das H. |
 
 Das `handoff-button` braucht `path-buttons` nicht, und `path-buttons` braucht kein `handoff-button`. Ohne H stehen die Buttons allein in der Leiste. Mit beiden Mods stehen sie links neben dem H, dafür gibt `handoff-button` den Inhalt anderer Mods in der Leiste weiter.
 
@@ -70,6 +70,11 @@ Directory Opus und der Chaos Player werden in den Program-Files-Ordnern der Masc
 
 Die Buttons zeigen die Pfade der letzten Antworten, die neuesten rechts, höchstens sieben. Ist eine Auswahlbox offen, stehen sie in einer Zeile darüber.
 
+In der Leiste:
+- **Bilder und Videos** erscheinen als kleines Vorschaubild mit abgerundetem Rahmen in der Farbe ihres Symbols. Videos zeigen das Bild bei Sekunde 1. Die Vorschau erzeugt `ffmpeg` (gesucht unter `Program Files\ffmpeg\bin`, sonst im PATH) als kleines JPEG im Temp-Ordner. Ohne ffmpeg, oder bis die Vorschau fertig ist, steht das Symbol da.
+- **Linksklick** öffnet den Pfad, **Rechtsklick** kopiert den vollen Pfad in die Zwischenablage (kurz erscheint „Pfad kopiert“).
+- **Überfahren** zeigt den Dateinamen gedämpft links in der Leiste.
+
 ### Relative Pfade (optional)
 
 Ohne Einstellung erkennt das Mod nur absolute Pfade. Soll es auch kurze Pfade wie `blender\shot01\frame.png` erkennen, nenne die ersten Ordner, ab denen das gilt. Sie werden dann im Projektordner der Sitzung gesucht. In `~/.claude/settings.json`:
@@ -96,10 +101,11 @@ Hinweise:
 
 ## handoff-button
 
-Drei Buttons rechts in der Leiste über dem Prompt:
+Vier Buttons rechts in der Leiste über dem Prompt. Beim Überfahren steht links in der Leiste ein kurzer Hinweis, was der Button tut.
 
 | Button | Was er tut |
 | --- | --- |
+| `⌾` | führt sofort `/advisor opus` aus |
 | `C` | führt sofort `/compact` aus, ohne Nachfrage |
 | `H` | schickt „Bitte schreib ein Handover.“, als hättest du es getippt |
 | `⤓` | das volle Handover, siehe unten |
