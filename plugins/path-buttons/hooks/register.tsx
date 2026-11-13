@@ -474,7 +474,7 @@ export const register: Register = (on, options) => {
     const below = await next(e)
     await syncBase($)
     const messages = await $.session.messages()
-    // Newest replies first, until the buttons are full; shown oldest to newest.
+    // Newest replies first, until the buttons are full; shown newest on the left.
     const paths: string[] = []
     for (const message of [...messages].reverse()) {
       if (message.role !== 'assistant') {
@@ -489,7 +489,6 @@ export const register: Register = (on, options) => {
         break
       }
     }
-    paths.reverse()
     if (paths.length === 0) {
       return below
     }
@@ -528,9 +527,10 @@ export const register: Register = (on, options) => {
         `<g clip-path="url(#round)" fill="${colour}"><rect width="${thumb.width}" height="${bar}"/>` +
         `<rect y="${thumb.height - bar}" width="${thumb.width}" height="${bar}"/></g></svg>`
       // A Button holds only text, so an empty Button lies over the preview and takes the click.
+      // The preview never shrinks, so the hovered name beside it cannot squeeze or shift it.
       const spaces = ' '.repeat(Math.max(1, Math.round(width / 14)))
       return (
-        <Box key={'thumb-box-' + i} position="relative" marginLeft="xs">
+        <Box key={'thumb-box-' + i} position="relative" marginLeft="xs" flexShrink={0}>
           <Svg key={'thumb-' + i} source={source} alt={symbol + ' ' + (path.split('\\').pop() ?? path)} width={width} height={THUMB_DRAWN} />
           <Box position="absolute" top={0} left={0} right={0} bottom={0} justifyContent="center" alignItems="center">
             {Client !== undefined ? (
@@ -547,14 +547,15 @@ export const register: Register = (on, options) => {
     const buttons = (
       <Box justifyContent="flex-end" alignItems="center">
         {(copiedNote !== undefined || (hovered !== undefined && paths.includes(hovered))) && (
-          <Box key="hovered-name" marginRight="md">
-            <Text dimColor>{copiedNote ?? hovered?.split('\\').filter(part => part !== '').pop() ?? hovered}</Text>
+          <Box key="hovered-name" marginRight="md" flexShrink={1} minWidth={0}>
+            {/* One line only: a long name is cut in the middle, so the band keeps its height. */}
+            <Text dimColor wrap="truncate-middle">{copiedNote ?? hovered?.split('\\').filter(part => part !== '').pop() ?? hovered}</Text>
           </Box>
         )}
         {paths.map((path, i) => previewOf(path, i) ?? (Client !== undefined ? (
           // A symbol as a region of hit.tsx: left click opens, right click shows the path.
           // Symbols get room on both sides; previews stay close together.
-          <Box key={'hit-box-' + i} marginX="xs">
+          <Box key={'hit-box-' + i} marginX="xs" flexShrink={0}>
             <Client key={'hit-' + i} module="./hit.tsx" props={{ path, label: dotFor(path) }} />
           </Box>
         ) : (

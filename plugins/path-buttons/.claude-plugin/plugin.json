@@ -1,6 +1,6 @@
 {
   "name": "path-buttons",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Farbige Buttons und Vorschaubilder über dem Prompt für die im Claude-Text genannten Pfade: Linksklick öffnet (Ordner in Directory Opus, Bilder und Videos im Chaos Player, .md/.txt im Sidepanel), Rechtsklick kopiert den Pfad, Überfahren zeigt den Dateinamen.",
   "author": { "name": "gottesgerl" },
   "userConfig": {

@@ -68,7 +68,7 @@ Im Text steht nur der Dateiname (bei Ordnern mit dem übergeordneten Ordner), de
 
 Directory Opus und der Chaos Player werden in den Program-Files-Ordnern der Maschine gesucht, es ist nichts fest eingetragen. Sind sie nicht installiert, greift die Standard-App.
 
-Die Buttons zeigen die Pfade der letzten Antworten, die neuesten rechts, höchstens sieben. Ist eine Auswahlbox offen, stehen sie in einer Zeile darüber.
+Die Buttons zeigen die Pfade der letzten Antworten, die neuesten links, höchstens sieben. Ist eine Auswahlbox offen, stehen sie in einer Zeile darüber.
 
 In der Leiste:
 - **Bilder und Videos** erscheinen als kleines, helles Schwarz-Weiß-Vorschaubild mit abgerundeten Ecken und einem Balken in der Farbe ihres Symbols oben und unten. Videos zeigen das Bild bei Sekunde 1. Die Vorschau erzeugt `ffmpeg` (gesucht unter `Program Files\ffmpeg\bin`, sonst im PATH) als kleines JPEG im Temp-Ordner. Ohne ffmpeg, oder bis die Vorschau fertig ist, steht das Symbol da.
